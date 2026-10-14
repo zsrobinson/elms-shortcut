@@ -1,0 +1,219 @@
+BEGIN:VCALENDAR
+PRODID:icalendar-ruby
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Sam Testudo Calendar (ELMS-Canvas)
+X-WR-CALDESC:SYNTHETIC FIXTURE: invented items shaped like an ELMS-Canvas fe
+ ed\, not a real student's. Replace with a recorded feed (scripts/record-ics
+ -fixture.ts\, docs/V3.md §3.6).
+BEGIN:VEVENT
+DTEND:20260930T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20260930T035900Z
+CLASS:PUBLIC
+DESCRIPTION:Implement the tiny shell described in the handout.\nSubmit to
+  the submit server before the deadline.
+LOCATION:
+SEQUENCE:0
+SUMMARY:Project 2 [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=09&year=2026#assignment_4410001
+UID:event-assignment-4410001
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261001T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261001T035900Z
+CLASS:PUBLIC
+DESCRIPTION:
+SEQUENCE:0
+SUMMARY:WebAssign 5 [MATH240-0201: Introduction to Linear Algebra]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300002&
+ month=09&year=2026#assignment_4410002
+UID:event-assignment-4410002
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261008T181500Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261008T170000Z
+CLASS:PUBLIC
+DESCRIPTION:In class. Bring a pencil and your UID card.
+LOCATION:IRB 0324
+SEQUENCE:0
+SUMMARY:Midterm 1 [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=10&year=2026#calendar_event_880001
+UID:event-calendar-event-880001
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261002T160000Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261002T160000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Quiz 3 [MATH240-0201: Introduction to Linear Algebra]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300002&
+ month=10&year=2026#assignment_4410003
+UID:event-assignment-4410003
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261016T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261016T035900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Final Project Proposal [CMSC216-0103: Introduction to Computer Syste
+ ms]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=10&year=2026#assignment_4410004
+UID:event-assignment-4410004
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261007T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261007T035900Z
+CLASS:PUBLIC
+DESCRIPTION:Submit on Gradescope: https://www.gradescope.com/courses/500001
+ /assignments/2700001
+SEQUENCE:0
+SUMMARY:Homework 4 [MATH240-0201: Introduction to Linear Algebra]
+URL;VALUE=URI:https://elms.umd.edu/courses/1300002/assignments/4410005
+UID:event-assignment-4410005
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261006
+DTSTAMP:20260926T160000Z
+DTSTART;VALUE=DATE:20261005
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Reading response 3 [ENGL101-0501: Academic Writing]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300003&
+ month=10&year=2026#assignment_4410006
+UID:event-assignment-4410006
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261013T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261013T035900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Essay 1: Rhetoric\, Audience\; Purpose [ENGL101-0501: Academic Wri
+ ting]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300003&
+ month=10&year=2026#assignment_4410007
+UID:event-assignment-4410007
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261101T055900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261101T055900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Lab 7 [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=11&year=2026#assignment_4410008
+UID:event-assignment-4410008
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261101T063000Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261101T063000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Lab 8 [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=11&year=2026#assignment_4410009
+UID:event-assignment-4410009
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261102T045900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261102T045900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Problem Set 3 [CMSC216/ENEE222-0101: Introduction to Computer Syst
+ ems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300004&
+ month=11&year=2026#assignment_4410010
+UID:event-assignment-4410010
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261102T050000Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261102T050000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Chapter 9 reading check [BSCI170-0101\,0102\,0103: Principles of M
+ olecular & Cellular Biology]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300005&
+ month=11&year=2026#assignment_4410011
+UID:event-assignment-4410011
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261009T150000Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261009T143000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Advising appointment [Sam Testudo]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=user_9000001&mo
+ nth=10&year=2026#calendar_event_880002
+UID:event-calendar-event-880002
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261014T200000Z
+DTSTAMP:20260926T160000Z
+DTSTART:20261014T190000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Office hours [moved to IRB 1116] [CMSC216-0103: Introduction to Co
+ mputer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=10&year=2026#calendar_event_880003
+UID:event-calendar-event-880003
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Reminder about gradescope.com
+TRIGGER:-PT15M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20260901T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20260901T035900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Syllabus quiz [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=08&year=2026#assignment_4410012
+UID:event-assignment-4410012
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20260930T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:20260930T035900Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Project 2 [CMSC216-0103: Introduction to Computer Systems]
+URL;VALUE=URI:https://elms.umd.edu/calendar?include_contexts=course_1300001&
+ month=09&year=2026#assignment_4410001
+UID:event-assignment-4410001
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260926T160000Z
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Undated discussion [ENGL101-0501: Academic Writing]
+UID:event-assignment-4410013
+END:VEVENT
+BEGIN:VEVENT
+DTEND:20261020T035900Z
+DTSTAMP:20260926T160000Z
+DTSTART:2026-10-20
+CLASS:PUBLIC
+SEQUENCE:0
+SUMMARY:Broken date [ENGL101-0501: Academic Writing]
+UID:event-assignment-4410014
+END:VEVENT
+END:VCALENDAR

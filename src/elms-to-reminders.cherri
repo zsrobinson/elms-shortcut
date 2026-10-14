@@ -1,0 +1,404 @@
+/*
+ELMS to Reminders
+
+Keeps one Reminders list in step with your ELMS calendar feed.
+- New ELMS items become reminders, tagged with the course (CMSC216).
+- When ELMS moves a due date, the reminder moves too, even if you moved it.
+- When ELMS renames an item, the reminder follows, unless you renamed it.
+- Reminders you delete never come back. Your checkmarks are never touched.
+- When ELMS drops an item, its reminder is completed with "Removed from ELMS".
+
+Memory lives in iCloud Drive/Shortcuts/ELMS Reminders/memory.json.
+
+Build: scripts/build.sh (Cherri, then scripts/postprocess.py, then signing).
+Regexes avoid {n} quantifiers because Cherri reads braces as variables.
+*/
+
+#define name ELMS to Reminders
+#define color yellow
+#define glyph calendar
+
+#include 'actions/text'
+#include 'actions/web'
+#include 'actions/documents'
+#include 'actions/calendar'
+#include 'actions/scripting'
+
+// Reminders actions Cherri doesn't ship. Parameter keys are the ones real
+// shortcuts use (unqforge's harvested evidence).
+#define action 'comment' note(rawtext text: 'WFCommentActionText')
+#define action 'filter.reminders' findReminders(): array
+#define action 'properties.reminders' getReminderDetail(variable reminder: 'WFInput', text detail: 'WFContentItemPropertyName'): text
+#define action 'addnewreminder' addReminder(
+    text title: 'WFCalendarItemTitle',
+    text notes: 'WFCalendarItemNotes',
+    text url: 'WFURL',
+    variable tags: 'WFTags',
+    variable alertEnabled: 'WFAlertEnabled',
+    text alertTime: 'WFAlertCustomTime'
+) {
+    "WFAlertCondition": "At Time"
+}
+#define action 'setters.reminders' setReminderTitle(variable reminder: 'WFInput', text title: 'WFReminderContentItemTitle') {
+    "WFContentItemPropertyName": "Title"
+}
+#define action 'setters.reminders' setReminderDueDate(variable reminder: 'WFInput', text dueDate: 'WFReminderContentItemDueDate') {
+    "WFContentItemPropertyName": "Due Date"
+}
+#define action 'setters.reminders' setReminderNotes(variable reminder: 'WFInput', text notes: 'WFReminderContentItemNotes') {
+    "WFContentItemPropertyName": "Notes"
+}
+#define action 'setters.reminders' completeReminder(variable reminder: 'WFInput') {
+    "WFContentItemPropertyName": "Is Completed",
+    "WFReminderContentItemIsCompleted": 1
+}
+// .ics escapes a backslash as two; written as JSON escapes because Cherri
+// strings can't end in a backslash.
+#define action 'text.replace' unescapeBackslashes(text subject: 'WFInput'): text {
+    "WFReplaceTextFind": "\u005c\u005c",
+    "WFReplaceTextReplace": "\u005c"
+}
+// Replace Text with an empty replacement (Cherri can't pass "").
+#define action 'text.replace' removeText(text find: 'WFReplaceTextFind', text subject: 'WFInput', bool ?regExp: 'WFReplaceTextRegularExpression' = false): text
+
+/* ---------- Settings ---------- */
+
+note('SETTINGS. alert: off, due (at the due time), 09:00 (that time on the due day) or -1d 18:00 (that time the day before). skipCourses: codes to ignore, like UNIV100 CMSC000. includeEvents: yes or no (ELMS calendar events as well as assignments). debug: yes shows a report at the end.')
+@settings = {
+    "alert": "off",
+    "skipCourses": "none",
+    "includeEvents": "yes",
+    "debug": "no"
+}
+const alertSetting = "{settings['alert']}"
+const skipCourses = "{settings['skipCourses']}"
+const includeEvents = "{settings['includeEvents']}"
+const debugSetting = "{settings['debug']}"
+
+/* ---------- Fetch the feed ---------- */
+
+note('Your ELMS calendar link goes in the next Text. It is a secret: anyone with it can read your due dates.')
+const givenLink = "PASTE_YOUR_ELMS_LINK"  // filled by the import question
+if givenLink !contains ".ics" {
+    showNotification("Paste your ELMS calendar link into the Shortcut first.", "ELMS to Reminders")
+    stop()
+}
+const httpsLink = replaceText("webcal://", "https://", givenLink)
+const feedLink = replaceText("elms.umd.edu", "umd.instructure.com", httpsLink)
+
+const download = downloadURL(feedLink)
+// Naming it .txt makes Shortcuts read the calendar file as plain text.
+const renamed = setName(download, "elms.txt")
+const feedFileText = getText(renamed)
+const rawText = "{feedFileText}"
+if rawText !contains "BEGIN:VCALENDAR" {
+    showNotification("Couldn't read your ELMS calendar. Check the link in the Shortcut.", "ELMS to Reminders")
+    stop()
+}
+
+// Rejoin the long lines .ics files fold onto the next line.
+const feedText = removeText('\r?\n[ \t]', rawText, true)
+
+/* ---------- Memory and the window ---------- */
+
+note('Memory of the last sync. Deleting the file starts over: existing reminders are adopted, not duplicated.')
+const memoryFile = getFile("ELMS Reminders/memory.json", false)
+const memory = getDictionary(memoryFile)
+@known = memory['items']
+@gone = memory['gone']
+if !known {
+    @known = {}
+}
+if !gone {
+    @gone = {}
+}
+@newKnown = {}
+@newGone = {}
+@feedItems = {}
+@byURL = {}
+@seen = "|"
+
+const today = currentDate()
+// The window is written into these two Adjust Date steps: 14 days back,
+// 60 ahead. Tap the numbers to change them. (A number from a variable isn't
+// accepted there on iOS.)
+note('WINDOW. Reminders are made for ELMS items due from 14 days ago to 60 days ahead. Tap the numbers in the next two Adjust Date steps to change that.')
+const startDate = adjustDate("{today}", "Subtract", 14, "days")
+const startText = formatDate(startDate, "Custom", "yyyyMMdd")
+const winStart = number(startText)
+const endDate = adjustDate("{today}", "Add", 60, "days")
+const endText = formatDate(endDate, "Custom", "yyyyMMdd")
+const winEnd = number(endText)
+
+// Diagnostics: shown at the end when debug is yes. Never includes your link.
+const feedChars = count(rawText, "Characters")
+const uidLines = matchText('\nUID:', feedText)
+const uidCount = count(uidLines)
+@log = "Downloaded {feedChars} characters, {uidCount} UID lines. Window {winStart} to {winEnd}."
+const probeText = "20261015"
+const probeNumber = number(probeText)
+if probeNumber.number >= winStart {
+    @log = "{log}
+Probe: number >= works (yes)"
+} else {
+    @log = "{log}
+Probe: number >= says no"
+}
+if rawText contains "BEGIN:VEVENT" {
+    @log = "{log}
+Probe: text contains works (yes)"
+} else {
+    @log = "{log}
+Probe: text contains says no"
+}
+
+/* ---------- Parse the events ---------- */
+
+const events = matchText('BEGIN:VEVENT[\s\S]*?END:VEVENT', feedText)
+const eventCount = count(events)
+@log = "{log}
+Events matched: {eventCount}"
+if !events {
+    if known {
+        showNotification("ELMS sent an empty calendar, so nothing was changed.", "ELMS to Reminders")
+        stop()
+    }
+}
+
+for event in events {
+    const uidMatch = matchText('\nUID:([^\r\n]*)', event)
+    const uid = getMatchGroup(uidMatch, 1)
+    @seen = "{seen}{uid}|"
+
+    const startMatch = matchText('\nDTSTART([^:\r\n]*):([^\r\n]*)', event)
+    const dueRaw = getMatchGroup(startMatch, 2)
+    const dayMatch = matchText('[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]', dueRaw)
+    const day = number(dayMatch)
+    const base = getValue(known, "{uid}")
+
+    @inScope = "no"
+    if day.number >= winStart && day.number <= winEnd {
+        @inScope = "yes"
+    }
+    if base {
+        @inScope = "yes"
+    }
+    @log = "{log}
+{RepeatIndex}. {uid} | {dueRaw} | day {day} | in window: {inScope}"
+
+    if inScope == "yes" {
+        // "Project 2 [CMSC216-0103: Intro to …]" → title and course code
+        const summaryMatch = matchText('\nSUMMARY:([^\r\n]*)', event)
+        const summaryRaw = getMatchGroup(summaryMatch, 1)
+        const unescaped1 = replaceText('\,', ",", summaryRaw)
+        const unescaped2 = replaceText('\;', ";", unescaped1)
+        const unescaped3 = replaceText('\n', " ", unescaped2)
+        const summary = unescapeBackslashes(unescaped3)
+
+        const titleMatch = matchText('(.*) \[([^\[\]]*)\]', summary)
+        @title = getMatchGroup(titleMatch, 1)
+        const label = getMatchGroup(titleMatch, 2)
+        if !title {
+            @title = summary
+        }
+        const codeMatch = matchText('[A-Z][A-Z][A-Z][A-Z][0-9][0-9][0-9][A-Z]?', label)
+        const course = getFirstItem(codeMatch)
+
+        const urlMatch = matchText('\nURL[^:\r\n]*:([^\r\n]*)', event)
+        @link = getMatchGroup(urlMatch, 1)
+        if !link {
+            @link = "https://umd.instructure.com/calendar#{uid}"
+        }
+
+        // 20261015T035900Z → 2026-10-15 03:59:00 +0000, which Get Dates reads as UTC.
+        const iso1 = replaceText('([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])T([0-9][0-9])([0-9][0-9])([0-9][0-9])Z', '$1-$2-$3 $4:$5:$6 +0000', dueRaw, true, true)
+        const iso2 = replaceText('([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])T([0-9][0-9])([0-9][0-9])([0-9][0-9])', '$1-$2-$3 $4:$5:$6', iso1, true, true)
+        const iso3 = replaceText('^([0-9][0-9][0-9][0-9])([0-9][0-9])([0-9][0-9])$', '$1-$2-$3', iso2, true, true)
+        const due = getDates(iso3)
+
+        if dueRaw.text contains "T" {
+            @dueLabel = formatDate(due, "Custom", "EEE MMM d, h:mm a")
+            @remDate = formatDate(due, "Custom", "yyyy-MM-dd HH:mm")
+        } else {
+            @dueLabel = formatDate(due, "Custom", "EEE MMM d")
+            @remDate = formatDate(due, "Custom", "yyyy-MM-dd")
+        }
+        if alertSetting contains ":" {
+            if alertSetting beginsWith "-1d" {
+                const dayBefore = adjustDate("{due}", "Subtract", 1, "days")
+                @remDay = formatDate(dayBefore, "Custom", "yyyy-MM-dd")
+            } else {
+                @remDay = formatDate(due, "Custom", "yyyy-MM-dd")
+            }
+            const alertTime = removeText("-1d ", alertSetting)
+            @remDate = "{remDay} {alertTime}"
+        }
+
+        @skip = "no"
+        if course && skipCourses contains course {
+            @skip = "yes"
+        }
+        if includeEvents == "no" && uid.text !contains "event-assignment-" {
+            @skip = "yes"
+        }
+
+        if skip == "no" {
+            @log = "{log}  → kept"
+            @item = {
+                "title": "{title}",
+                "due": "{dueRaw}",
+                "day": "{day}",
+                "remDate": "{remDate}",
+                "dueLabel": "{dueLabel}",
+                "url": "{link}"
+            }
+            if course {
+                @item = setValue(item, "course", "{course}")
+            }
+            @feedItems = setValue(feedItems, "{uid}", "{item}")
+        }
+    }
+}
+
+/* ---------- Index the reminders ---------- */
+
+note('Find Reminders: add the filter "List is <your list>" so only that list is read. It works without it, just slower.')
+const reminders = findReminders()
+const reminderCount = count(reminders)
+const feedItemCount = count(feedItems)
+@log = "{log}
+Kept {feedItemCount} items. Find Reminders returned {reminderCount}."
+for listed in reminders {
+    const listedURL = getReminderDetail(listed, "URL")
+    if listedURL {
+        const urlKey = replaceText(".", "_", "{listedURL}")
+        @byURL = setValue(byURL, "{urlKey}", "{RepeatIndex}")
+    }
+}
+
+/* ---------- Merge ---------- */
+
+@alertEnabled = "Alert"
+if alertSetting == "off" {
+    @alertEnabled = "No Alert"
+}
+
+const feedKeys = getKeys(feedItems)
+for feedKey in feedKeys {
+    const fUID = "{feedKey}"
+    const fItem = getValue(feedItems, "{fUID}")
+    const fTitle = "{fItem['title']}"
+    @courseTag = fItem['course']
+    const fDue = "{fItem['due']}"
+    const fDayText = "{fItem['day']}"
+    const fDay = number(fDayText)
+    const fRemDate = "{fItem['remDate']}"
+    const fDueLabel = "{fItem['dueLabel']}"
+    const fURL = "{fItem['url']}"
+    const fBase = getValue(known, "{fUID}")
+    const wasGone = getValue(gone, "{fUID}")
+
+    // Anything due before the window is left alone and forgotten.
+    if fDay.number >= winStart {
+        if wasGone {
+            // You deleted this one: keep remembering that.
+            @newGone = setValue(newGone, "{fUID}", "{fDay}")
+        } else {
+            if fBase {
+                @lookURL = "{fBase['url']}"
+            } else {
+                @lookURL = "{fURL}"
+            }
+            const lookKey = replaceText(".", "_", lookURL)
+            const index = getValue(byURL, "{lookKey}")
+
+            if !index {
+                if fBase {
+                    // Synced before and the reminder is gone: you deleted it.
+                    @newGone = setValue(newGone, "{fUID}", "{fDay}")
+                } else {
+                    if fDay.number <= winEnd {
+                        note('New from ELMS. Choose your list in the Add New Reminder below.')
+                        const created = addReminder(fTitle, "Due {fDueLabel}", fURL, courseTag, alertEnabled, fRemDate)
+                        @log = "{log}
+Created: {fUID}"
+                        if alertSetting == "off" {
+                            setReminderDueDate(created, fRemDate)
+                        }
+                        @createdBase = {
+                            "title": "{fTitle}",
+                            "due": "{fDue}",
+                            "url": "{fURL}",
+                            "day": "{fDay}"
+                        }
+                        @newKnown = setValue(newKnown, "{fUID}", "{createdBase}")
+                    }
+                }
+            } else {
+                const match = getListItem(reminders, index)
+                if fBase {
+                    const baseTitle = "{fBase['title']}"
+                    const baseDue = "{fBase['due']}"
+                    const reminderTitle = getReminderDetail(match, "Title")
+                    const currentTitle = "{reminderTitle}"
+                    // Follow ELMS's renames until you rename it yourself.
+                    if currentTitle == baseTitle && fTitle != baseTitle {
+                        setReminderTitle(match, fTitle)
+                    }
+                    // When ELMS moves the due date, ELMS wins.
+                    if fDue != baseDue {
+                        setReminderDueDate(match, fRemDate)
+                    }
+                    @keptURL = "{fBase['url']}"
+                } else {
+                    // A reminder with this link already exists: adopt it.
+                    @keptURL = "{fURL}"
+                }
+                @keptBase = {
+                    "title": "{fTitle}",
+                    "due": "{fDue}",
+                    "url": "{keptURL}",
+                    "day": "{fDay}"
+                }
+                @newKnown = setValue(newKnown, "{fUID}", "{keptBase}")
+            }
+        }
+    }
+}
+
+/* ---------- Removed from ELMS ---------- */
+
+const knownKeys = getKeys(known)
+for knownKey in knownKeys {
+    const needle = "|{knownKey}|"
+    if seen !contains needle {
+        const kBase = getValue(known, "{knownKey}")
+        const kURL = "{kBase['url']}"
+        const kKey = replaceText(".", "_", kURL)
+        const kIndex = getValue(byURL, "{kKey}")
+        if kIndex {
+            const dropped = getListItem(reminders, kIndex)
+            const droppedDone = getReminderDetail(dropped, "Is Completed")
+            const doneText = "{droppedDone}"
+            if doneText != "Yes" {
+                const droppedNotes = getReminderDetail(dropped, "Notes")
+                setReminderNotes(dropped, "{droppedNotes}
+Removed from ELMS")
+                completeReminder(dropped)
+            }
+        }
+    }
+}
+
+/* ---------- Save memory ---------- */
+
+@newMemory = {
+    "v": 1
+}
+@newMemory = setValue(newMemory, "items", "{newKnown}")
+@newMemory = setValue(newMemory, "gone", "{newGone}")
+saveFile("ELMS Reminders/memory.json", newMemory, true)
+
+if debugSetting == "yes" {
+    show("{log}")
+}
